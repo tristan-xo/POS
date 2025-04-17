@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central Committee Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="dashboard-header">
+            <h1><i class="fas fa-users"></i> Central Committee Dashboard</h1>
+        </header>
+
+        <div class="search-container card">
+            <div class="search-fields">
+                <div class="form-group">
+                    <label for="shopId">Shop ID</label>
+                    <input type="text" id="shopId" class="form-control" placeholder="Enter Shop ID">
+                </div>
+
+                <div class="form-group">
+                    <label for="committeeYear">Year</label>
+                    <input type="number" id="committeeYear" class="form-control" placeholder="Enter Year" min="2000" max="2100">
+                </div>
+                
+                <div class="form-group">
+                    <label for="committeeMonth">Month</label>
+                    <select id="committeeMonth" class="form-control">
+                        <option value="">Select Month</option>
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="search-btn" onclick="fetchCommitteeData()">
+                <i class="fas fa-search"></i> Generate Report
+            </button>
+        </div>
+
+        <div id="committeeResults">
+            <!-- Full width cards -->
+            <div class="card full-width">
+                <h3><i class="fas fa-chart-bar"></i> Monthly Sales</h3>
+                <canvas id="salesChart"></canvas>
+            </div>
+        
+            <div class="card full-width">
+                <h3><i class="fas fa-box-open"></i> Current Stock Availability</h3>
+                <div id="currentStock" class="table-responsive"></div>
+            </div>
+        
+            <!-- Half width cards -->
+            <div class="half-width-container">
+                <div class="card half-width">
+                    <h3><i class="fas fa-boxes"></i> Stock Sales Summary</h3>
+                    <div id="stockSalesSummary" class="table-responsive"></div>
+                </div>
+        
+                <div class="card half-width">
+                    <h3><i class="fas fa-list"></i> All Transactions</h3>
+                    <div id="allTransactions" class="table-responsive"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let salesChart = null;
+
+        // Update the fetchCommitteeData function in committee.html
+        async function fetchCommitteeData() {
+            const shopId = document.getElementById("shopId").value.trim();
+            const year = document.getElementById("committeeYear").value.trim();
+            const month = document.getElementById("committeeMonth").value;
+
+            if (!shopId) {
+                showAlert("Please enter a valid Shop ID.", "error");
+                return;
+            }
+
+            if (!year || !month) {
+                showAlert("Please enter Year and select a Month.", "error");
+                return;
+            }
+
+            // Show loading state
+            document.getElementById("stockSalesSummary").innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading data...</div>';
+            document.getElementById("allTransactions").innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading transactions...</div>';
+            document.getElementById("currentStock").innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading stock data...</div>';
+
+            try {
+                // Show loading for chart
+                const chartCanvas = document.getElementById('salesChart');
+                const chartCtx = chartCanvas.getContext('2d');
+                chartCtx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+                chartCtx.fillStyle = '#f5f5f5';
+                chartCtx.fillRect(0, 0, chartCanvas.width, chartCanvas.height);
+                chartCtx.fillStyle = '#666';
+                chartCtx.textAlign = 'center';
+                chartCtx.fillText('Loading chart data...', chartCanvas.width/2, chartCanvas.height/2);
+
+                // Fetch all data with error handling
+                const responses = await Promise.allSettled([
+                    fetch(`http://127.0.0.1:5000/committee/sales?shop_id=${shopId}&year=${year}&month=${month}`),
+                    fetch(`http://127.0.0.1:5000/transactions?shop_id=${shopId}&year=${year}&month=${month}`),
+                    fetch(`http://127.0.0.1:5000/committee/current-stock?shop_id=${shopId}`)
+                ]);
+
+                // Process sales data
+                if (responses[0].status === 'fulfilled') {
+                    const salesData = await responses[0].value.json();
+                    if (salesData.error) {
+                        document.getElementById("stockSalesSummary").innerHTML = `<div class="error-message"><i class="fas fa-exclamation-circle"></i> ${salesData.error}</div>`;
+                    } else {
+                        updateSalesChart(salesData);
+                        renderStockSales(salesData.stock_totals);
+                    }
+                } else {
+                    document.getElementById("stockSalesSummary").innerHTML = `<div class="error-message"><i class="fas fa-exclamation-circle"></i> Failed to load sales data</div>`;
+                }
+
+                // Process transactions
+                if (responses[1].status === 'fulfilled') {
+                    const transactionsData = await responses[1].value.json();
+                    if (transactionsData.error) {
+                        document.getElementById("allTransactions").innerHTML = `<div class="error-message"><i class="fas fa-exclamation-circle"></i> ${transactionsData.error}</div>`;
+                    } else {
+                        renderAllTransactions(transactionsData.transactions);
+                    }
+                } else {
+                    document.getElementById("allTransactions").innerHTML = `<div class="error-message"><i class="fas fa-exclamation-circle"></i> Failed to load transactions</div>`;
+                }
+
+                // Process current stock
+                if (responses[2].status === 'fulfilled') {
+                    const currentStockData = await responses[2].value.json();
+                    if (currentStockData.error) {
+                        document.getElementById("currentStock").innerHTML = `<div class="error-message"><i class="fas fa-exclamation-circle"></i> ${currentStockData.error}</div>`;
+                    } else {
+                        renderCurrentStock(currentStockData.current_stock);
+                    }
+                } else {
+                    document.getElementById("currentStock").innerHTML = `<div class="error-message"><i class="fas fa-exclamation-circle"></i> Failed to load stock data</div>`;
+                }
+
+            } catch (error) {
+                console.error("Error fetching committee data:", error);
+                showAlert("Failed to fetch data. Please try again.", "error");
+                
+                // Clear loading states
+                document.getElementById("stockSalesSummary").innerHTML = '<div class="error-message"><i class="fas fa-exclamation-circle"></i> Loading failed</div>';
+                document.getElementById("allTransactions").innerHTML = '<div class="error-message"><i class="fas fa-exclamation-circle"></i> Loading failed</div>';
+                document.getElementById("currentStock").innerHTML = '<div class="error-message"><i class="fas fa-exclamation-circle"></i> Loading failed</div>';
+            }
+        }
+
+        function updateSalesChart(data) {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            
+            // Destroy previous chart if exists
+            if (salesChart) {
+                salesChart.destroy();
+            }
+
+            // Prepare chart data
+            const labels = Object.keys(data.stock_totals);
+            const quantities = Object.values(data.stock_totals);
+            const backgroundColors = labels.map((_, i) => {
+                const hue = (i * 137.508) % 360; // Golden angle approximation
+                return `hsl(${hue}, 70%, 60%)`;
+            });
+
+            salesChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Quantity Sold (kg)',
+                        data: quantities,
+                        backgroundColor: backgroundColors,
+                        borderColor: backgroundColors.map(c => c.replace('60%)', '40%)')),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Quantity (kg)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Stock Items'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderStockSales(stockTotals) {
+            let html = `<table class="styled-table">
+                            <thead>
+                                <tr>
+                                    <th>Stock Item</th>
+                                    <th>Quantity Sold (kg)</th>
+                                    <th>Total Revenue (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+            let totalRevenue = 0;
+            for (const [stock, quantity] of Object.entries(stockTotals)) {
+                const price = getStockPrice(stock.toLowerCase());
+                const revenue = price * quantity;
+                totalRevenue += revenue;
+                
+                html += `<tr>
+                            <td>${stock}</td>
+                            <td>${quantity}</td>
+                            <td>₹${revenue.toFixed(2)}</td>
+                         </tr>`;
+            }
+
+            html += `</tbody>
+                     <tfoot>
+                        <tr>
+                            <th>Total</th>
+                            <th>${Object.values(stockTotals).reduce((a, b) => a + b, 0)} kg</th>
+                            <th>₹${totalRevenue.toFixed(2)}</th>
+                        </tr>
+                     </tfoot>
+                    </table>`;
+
+            document.getElementById("stockSalesSummary").innerHTML = html;
+        }
+
+        function renderAllTransactions(transactions) {
+            if (!transactions || transactions.length === 0) {
+                document.getElementById("allTransactions").innerHTML = '<div class="no-results">No transactions found</div>';
+                return;
+            }
+
+            let html = `<table class="styled-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>User ID</th>
+                                    <th>Item</th>
+                                    <th>Quantity (kg)</th>
+                                    <th>Price (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+            transactions.forEach(record => {
+                html += `<tr>
+                            <td>${record.date}</td>
+                            <td>${record.user_id}</td>
+                            <td>${record.stocks}</td>
+                            <td>${record.quantity_taken}</td>
+                            <td>₹${record.price}</td>
+                         </tr>`;
+            });
+
+            html += `</tbody></table>`;
+            document.getElementById("allTransactions").innerHTML = html;
+        }
+
+        function getStockPrice(stock) {
+            // This should match your server's stock prices
+            const prices = {
+                "rice": 2,
+                "wheat": 10,
+                "sugar": 20,
+                "dal": 15
+            };
+            return prices[stock.toLowerCase()] || 0;
+        }
+
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${type}`;
+            alertDiv.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${message}`;
+            
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
+        }    
+    </script>
+
+    <!-- Add this card to the committeeResults div, after the existing cards -->
+    
+
+    <!-- Update the fetchCommitteeData function to include current stock -->
+    <script>
+        async function fetchCommitteeData() {
+            const shopId = document.getElementById("shopId").value.trim();
+            const year = document.getElementById("committeeYear").value.trim();
+            const month = document.getElementById("committeeMonth").value;
+
+            if (!shopId) {
+                showAlert("Please enter a valid Shop ID.", "error");
+                return;
+            }
+
+            if (!year || !month) {
+                showAlert("Please enter Year and select a Month.", "error");
+                return;
+            }
+
+            // Show loading state
+            document.getElementById("stockSalesSummary").innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading data...</div>';
+            document.getElementById("allTransactions").innerHTML = '';
+            document.getElementById("currentStock").innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading stock data...</div>';
+
+            try {
+                // Fetch all data in parallel
+                const [salesData, transactionsData, currentStockData] = await Promise.all([
+                    fetch(`http://127.0.0.1:5000/committee/sales?shop_id=${shopId}&year=${year}&month=${month}`).then(res => res.json()),
+                    fetch(`http://127.0.0.1:5000/transactions?shop_id=${shopId}&year=${year}&month=${month}`).then(res => res.json()),
+                    fetch(`http://127.0.0.1:5000/committee/current-stock?shop_id=${shopId}`).then(res => res.json())
+                ]);
+
+                // Process sales data
+                if (salesData.error) {
+                    document.getElementById("stockSalesSummary").innerHTML = `<div class="no-results">${salesData.error}</div>`;
+                } else {
+                    updateSalesChart(salesData);
+                    renderStockSales(salesData.stock_totals);
+                }
+
+                // Process transactions
+                if (transactionsData.error) {
+                    document.getElementById("allTransactions").innerHTML = `<div class="no-results">${transactionsData.error}</div>`;
+                } else {
+                    renderAllTransactions(transactionsData.transactions);
+                }
+
+                // Process current stock
+                if (currentStockData.error) {
+                    document.getElementById("currentStock").innerHTML = `<div class="no-results">${currentStockData.error}</div>`;
+                } else {
+                    renderCurrentStock(currentStockData.current_stock);
+                }
+
+            } catch (error) {
+                console.error("Error fetching committee data:", error);
+                showAlert("Failed to fetch data. Please try again.", "error");
+            }
+        }
+
+        // Add this new function to render current stock
+        function renderCurrentStock(stockData) {
+            if (!stockData || stockData.length === 0) {
+                document.getElementById("currentStock").innerHTML = '<div class="no-results">No stock data available</div>';
+                return;
+            }
+
+            let html = `<table class="styled-table">
+                            <thead>
+                                <tr>
+                                    <th>Stock Item</th>
+                                    <th>Current Quantity (kg)</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+            stockData.forEach(item => {
+                const statusClass = item.is_low ? 'low-stock' : '';
+                const statusText = item.is_low ? 'Low Stock' : 'In Stock';
+                
+                html += `<tr>
+                            <td>${item.stock_name}</td>
+                            <td>${item.current_quantity.toFixed(2)}</td>
+                            <td class="${statusClass}">${statusText}</td>
+                        </tr>`;
+            });
+
+            html += `</tbody></table>`;
+            document.getElementById("currentStock").innerHTML = html;
+        }
+    </script>
+</body>
+</html>
