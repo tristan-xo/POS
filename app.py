@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import requests
 from flask_cors import CORS
 from collections import defaultdict
@@ -29,6 +29,14 @@ STOCK_PRICES = {
     "sugar": 20,  # ₹20 per kg
     "dal": 15     # ₹15 per kg
 }
+
+@app.route("/", methods=["GET"])
+def home():
+    return render_template("index.html")
+
+@app.route("/central", methods=["GET"])
+def central():
+    return render_template("committee.html")
 
 @app.route("/transactions", methods=["GET"])
 def get_transactions():
@@ -223,4 +231,4 @@ def get_current_stock():
         return jsonify({"error": "Server error processing stock data"}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='172.16.0.124', port=5000)
