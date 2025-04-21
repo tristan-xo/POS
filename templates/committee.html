@@ -116,9 +116,9 @@
 
                 // Fetch all data with error handling
                 const responses = await Promise.allSettled([
-                    fetch(`http://127.0.0.1:5000/committee/sales?shop_id=${shopId}&year=${year}&month=${month}`),
-                    fetch(`http://127.0.0.1:5000/transactions?shop_id=${shopId}&year=${year}&month=${month}`),
-                    fetch(`http://127.0.0.1:5000/committee/current-stock?shop_id=${shopId}`)
+                    fetch(`http://POS.onrender.com/committee/sales?shop_id=${shopId}&year=${year}&month=${month}`),
+                    fetch(`http://POS.onrender.com/transactions?shop_id=${shopId}&year=${year}&month=${month}`),
+                    fetch(`http://POS.onrender.com/committee/current-stock?shop_id=${shopId}`)
                 ]);
 
                 // Process sales data
