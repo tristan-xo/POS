@@ -231,4 +231,4 @@ def get_current_stock():
         return jsonify({"error": "Server error processing stock data"}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000)
