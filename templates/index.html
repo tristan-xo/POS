@@ -77,7 +77,7 @@
             document.getElementById("transactions").innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading transactions...</div>';
 
             // Construct API URL
-            let apiUrl = `http://127.0.0.1:5000/transactions?user_id=${searchInput}&year=${year}&month=${month}`;
+            let apiUrl = `https://pos-f8fm.onrender.com/transactions?user_id=${searchInput}&year=${year}&month=${month}`;
 
             try {
                 const response = await fetch(apiUrl);
