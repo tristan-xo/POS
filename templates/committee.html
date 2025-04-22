@@ -116,9 +116,9 @@
 
                 // Fetch all data with error handling
                 const responses = await Promise.allSettled([
-                    fetch(`http://pos-f8fm.onrender.com/committee/sales?shop_id=${shopId}&year=${year}&month=${month}`),
-                    fetch(`http://pos-f8fm.onrender.com/transactions?shop_id=${shopId}&year=${year}&month=${month}`),
-                    fetch(`http://pos-f8fm.onrender.com/committee/current-stock?shop_id=${shopId}`)
+                    fetch(`https://pos-f8fm.onrender.com/committee/sales?shop_id=${shopId}&year=${year}&month=${month}`),
+                    fetch(`https://pos-f8fm.onrender.com/transactions?shop_id=${shopId}&year=${year}&month=${month}`),
+                    fetch(`https://pos-f8fm.onrender.com/committee/current-stock?shop_id=${shopId}`)
                 ]);
 
                 // Process sales data
@@ -339,9 +339,9 @@
             try {
                 // Fetch all data in parallel
                 const [salesData, transactionsData, currentStockData] = await Promise.all([
-                    fetch(`http://127.0.0.1:5000/committee/sales?shop_id=${shopId}&year=${year}&month=${month}`).then(res => res.json()),
-                    fetch(`http://127.0.0.1:5000/transactions?shop_id=${shopId}&year=${year}&month=${month}`).then(res => res.json()),
-                    fetch(`http://127.0.0.1:5000/committee/current-stock?shop_id=${shopId}`).then(res => res.json())
+                    fetch(`https://pos-f8fm.onrender.com/committee/sales?shop_id=${shopId}&year=${year}&month=${month}`).then(res => res.json()),
+                    fetch(`https://pos-f8fm.onrender.com/transactions?shop_id=${shopId}&year=${year}&month=${month}`).then(res => res.json()),
+                    fetch(`https://pos-f8fm.onrender.com/committee/current-stock?shop_id=${shopId}`).then(res => res.json())
                 ]);
 
                 // Process sales data
